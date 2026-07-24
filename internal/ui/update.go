@@ -252,6 +252,8 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "left":
 		m.focus = focusSecrets
 		return m, nil
+	case "e":
+		return m.enterEditMode()
 	case " ", "x":
 		idx := m.versionList.Index()
 		item, ok := m.versionList.SelectedItem().(versionItem)
