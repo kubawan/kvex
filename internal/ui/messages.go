@@ -38,7 +38,7 @@ type secretSavedMsg struct {
 	err   error
 }
 
-func fetchSecretNamesCmd(client *azure.Client, vaultName string) tea.Cmd {
+func fetchSecretNamesCmd(client azure.SecretsClient, vaultName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -47,7 +47,7 @@ func fetchSecretNamesCmd(client *azure.Client, vaultName string) tea.Cmd {
 	}
 }
 
-func fetchSecretValueCmd(client *azure.Client, vaultName, secretName, version string) tea.Cmd {
+func fetchSecretValueCmd(client azure.SecretsClient, vaultName, secretName, version string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -56,7 +56,7 @@ func fetchSecretValueCmd(client *azure.Client, vaultName, secretName, version st
 	}
 }
 
-func fetchSecretVersionsCmd(client *azure.Client, vaultName, secretName string) tea.Cmd {
+func fetchSecretVersionsCmd(client azure.SecretsClient, vaultName, secretName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -65,7 +65,7 @@ func fetchSecretVersionsCmd(client *azure.Client, vaultName, secretName string) 
 	}
 }
 
-func saveSecretCmd(client *azure.Client, vaultName, secretName, value string) tea.Cmd {
+func saveSecretCmd(client azure.SecretsClient, vaultName, secretName, value string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()

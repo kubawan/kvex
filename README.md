@@ -78,6 +78,23 @@ vaults:
 
 See [examples/config.yaml](examples/config.yaml).
 
+### Mock vault (no Azure access needed)
+
+A vault configured with a `mock://` URI is backed by an in-memory fake
+instead of a real Key Vault — no credential, no network, pre-seeded with a
+handful of sample secrets (including one with multiple versions, to exercise
+the version-history panel). Useful for trying kvex out or developing the UI
+without Azure access:
+
+```yaml
+vaults:
+  - name: mock
+    uri: mock://local
+```
+
+This is already the first entry in [examples/config.yaml](examples/config.yaml),
+so a fresh `./install.sh` gives you something to click around in immediately.
+
 ## Usage
 
 ```bash
