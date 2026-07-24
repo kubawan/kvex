@@ -40,17 +40,21 @@ func NewMockClient() *MockClient {
 	c := &MockClient{secrets: make(map[string][]mockVersion)}
 	now := time.Now()
 
-	c.seed("database-connection-string", "Server=localhost;Database=app;User=admin;Password=P@ssw0rd123!", now.Add(-72*time.Hour))
-	c.seed("database-connection-string", "Server=localhost;Database=app;User=admin;Password=NewP@ss456!", now.Add(-2*time.Hour))
+	// These are placeholder strings, not real credentials — deliberately
+	// avoid formats real secret scanners key off of (no sk_/whsec_/AKIA-style
+	// prefixes, no realistic base64 blobs), so they don't get mistaken for a
+	// leak.
+	c.seed("database-connection-string", "MOCK-DB-CONN not-a-real-secret rev1", now.Add(-72*time.Hour))
+	c.seed("database-connection-string", "MOCK-DB-CONN not-a-real-secret rev2", now.Add(-2*time.Hour))
 
-	c.seed("api-signing-key", "sk_mock_51Hc8xyzTESTKEYFORLOCALDEVONLY", now.Add(-200*time.Hour))
+	c.seed("api-signing-key", "MOCK-API-SIGNING-KEY not-a-real-secret", now.Add(-200*time.Hour))
 
-	c.seed("storage-account-key", "dGhpcyBpcyBhIGZha2Uga2V5IGZvciB0ZXN0aW5nIG9ubHku", now.Add(-500*time.Hour))
+	c.seed("storage-account-key", "MOCK-STORAGE-ACCOUNT-KEY not-a-real-secret", now.Add(-500*time.Hour))
 
-	c.seed("smtp-password", "Sup3rS3cr3tMailPass!", now.Add(-24*time.Hour))
-	c.seed("smtp-password", "RotatedMailPass!2026", now.Add(-1*time.Hour))
+	c.seed("smtp-password", "MOCK-SMTP-PASSWORD not-a-real-secret rev1", now.Add(-24*time.Hour))
+	c.seed("smtp-password", "MOCK-SMTP-PASSWORD not-a-real-secret rev2", now.Add(-1*time.Hour))
 
-	c.seed("third-party-webhook-secret", "whsec_mockvalueusedonlyforlocaltesting", now.Add(-10*time.Hour))
+	c.seed("third-party-webhook-secret", "MOCK-WEBHOOK-SECRET not-a-real-secret", now.Add(-10*time.Hour))
 
 	return c
 }
