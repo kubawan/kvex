@@ -2,9 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"kvex/internal/azure"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -29,6 +32,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case secretSavedMsg:
 		return m.onSecretSaved(msg)
+
+	case secretVersionValuesLoadedMsg:
+		return m.onSecretVersionValuesLoaded(msg)
 	}
 
 	// Non-key, non-app messages (e.g. cursor blink ticks) go to whichever
@@ -136,8 +142,8 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.currentSecretName == "" {
 			return m, nil
 		}
-		if m.currentVersion != "" {
-			m.status = "cannot edit a historical version — select the latest version first"
+		if m.currentVersion != "" || m.comparingCount > 0 {
+			m.status = "cannot edit here — select the latest version first"
 			return m, nil
 		}
 		m.editMode = true
@@ -216,18 +222,52 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab":
 		m.focus = focusSecrets
 		return m, nil
-	case "enter":
+	case " ", "x":
+		idx := m.versionList.Index()
 		item, ok := m.versionList.SelectedItem().(versionItem)
 		if !ok {
 			return m, nil
 		}
+		item.marked = !item.marked
+		if item.marked {
+			m.markedVersions[item.version.Version] = true
+		} else {
+			delete(m.markedVersions, item.version.Version)
+		}
+		cmd := m.versionList.SetItem(idx, item)
+		if len(m.markedVersions) > 0 {
+			m.status = fmt.Sprintf("%d version(s) marked — enter to compare", len(m.markedVersions))
+		}
+		return m, cmd
+	case "enter":
 		client, err := m.clientFor(m.currentVaultName)
 		if err != nil {
 			m.err = err
 			m.status = err.Error()
 			return m, nil
 		}
+
+		if len(m.markedVersions) >= 2 {
+			var marked []azure.Version
+			for _, it := range m.versionList.Items() {
+				vi, ok := it.(versionItem)
+				if ok && m.markedVersions[vi.version.Version] {
+					marked = append(marked, vi.version)
+				}
+			}
+			m.loading = true
+			m.focus = focusDetail
+			m.status = fmt.Sprintf("loading %d versions to compare...", len(marked))
+			return m, fetchSecretVersionValuesCmd(client, m.currentVaultName, m.currentSecretName, marked)
+		}
+
+		item, ok := m.versionList.SelectedItem().(versionItem)
+		if !ok {
+			return m, nil
+		}
 		m.currentVersion = item.version.Version
+		m.comparingCount = 0
+		m.comparingSummary = ""
 		m.loading = true
 		m.focus = focusDetail
 		short := item.version.Version
@@ -257,6 +297,9 @@ func (m Model) selectVault(name string) (Model, tea.Cmd) {
 	m.currentValue = ""
 	m.editMode = false
 	m.showVersions = false
+	m.markedVersions = make(map[string]bool)
+	m.comparingCount = 0
+	m.comparingSummary = ""
 	m.focus = focusSecrets
 
 	if names, ok := m.secretNamesCache[name]; ok {
@@ -288,6 +331,9 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.currentVersion = ""
 	m.editMode = false
 	m.showVersions = false
+	m.markedVersions = make(map[string]bool)
+	m.comparingCount = 0
+	m.comparingSummary = ""
 	m.focus = focusDetail
 	m.loading = true
 	m.detail.SetContent("loading...")
@@ -320,6 +366,8 @@ func (m Model) onSecretValueLoaded(msg secretValueLoadedMsg) (Model, tea.Cmd) {
 	}
 	if m.currentVaultName == msg.vault && m.currentSecretName == msg.name {
 		m.currentValue = msg.value
+		m.comparingCount = 0
+		m.comparingSummary = ""
 		m.detail.SetContent(msg.value)
 		if msg.version == "" {
 			m.status = "READ-ONLY"
@@ -343,10 +391,40 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 	}
 	items := make([]list.Item, len(msg.versions))
 	for i, v := range msg.versions {
-		items[i] = versionItem{version: v}
+		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version]}
 	}
 	m.versionList.SetItems(items)
-	m.status = fmt.Sprintf("%d versions", len(msg.versions))
+	m.status = fmt.Sprintf("%d versions — space to mark, enter to compare 2+", len(msg.versions))
+	return m, nil
+}
+
+// onSecretVersionValuesLoaded renders two or more marked versions'
+// values stacked in the detail pane for side-by-side comparison. Always
+// read-only, regardless of edit mode elsewhere.
+func (m Model) onSecretVersionValuesLoaded(msg secretVersionValuesLoadedMsg) (Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		m.err = msg.err
+		m.status = "error comparing versions: " + msg.err.Error()
+		return m, nil
+	}
+	if m.currentVaultName != msg.vault || m.currentSecretName != msg.name {
+		return m, nil
+	}
+
+	blocks := make([]string, len(msg.entries))
+	for i, e := range msg.entries {
+		short := e.Version
+		if len(short) > 12 {
+			short = short[:12]
+		}
+		blocks[i] = fmt.Sprintf("── %s · %s ──\n%s", short, e.Created, e.Value)
+	}
+	m.detail.SetContent(strings.Join(blocks, "\n\n"))
+	m.currentVersion = ""
+	m.comparingCount = len(msg.entries)
+	m.comparingSummary = fmt.Sprintf("comparing %d versions", len(msg.entries))
+	m.status = m.comparingSummary + " — read-only"
 	return m, nil
 }
 

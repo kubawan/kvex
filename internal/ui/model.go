@@ -50,6 +50,10 @@ type Model struct {
 	currentVersion    string // "" means latest/current
 	currentValue      string
 
+	markedVersions   map[string]bool // version ID -> marked for comparison, scoped to currentSecretName
+	comparingCount   int             // number of versions in the currently displayed comparison, 0 if none
+	comparingSummary string          // short description shown in the banner while comparing
+
 	width, height int
 	ready         bool
 }
@@ -84,6 +88,7 @@ func New(cfg *config.Config, cred azcore.TokenCredential) Model {
 		cred:             cred,
 		clients:          make(map[string]azure.SecretsClient),
 		secretNamesCache: make(map[string][]string),
+		markedVersions:   make(map[string]bool),
 		vaultList:        vaultList,
 		secretList:       secretList,
 		versionList:      versionList,

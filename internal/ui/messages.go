@@ -38,6 +38,21 @@ type secretSavedMsg struct {
 	err   error
 }
 
+// versionValueEntry pairs a fetched version's value with its metadata, for
+// side-by-side display in the detail pane.
+type versionValueEntry struct {
+	Version string
+	Created string
+	Value   string
+}
+
+type secretVersionValuesLoadedMsg struct {
+	vault   string
+	name    string
+	entries []versionValueEntry
+	err     error
+}
+
 func fetchSecretNamesCmd(client azure.SecretsClient, vaultName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
@@ -62,6 +77,24 @@ func fetchSecretVersionsCmd(client azure.SecretsClient, vaultName, secretName st
 		defer cancel()
 		versions, err := client.ListSecretVersions(ctx, secretName)
 		return secretVersionsLoadedMsg{vault: vaultName, name: secretName, versions: versions, err: err}
+	}
+}
+
+// fetchSecretVersionValuesCmd fetches the value of each given version,
+// sequentially, and bundles them into one message for side-by-side display.
+func fetchSecretVersionValuesCmd(client azure.SecretsClient, vaultName, secretName string, versions []azure.Version) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
+		defer cancel()
+		entries := make([]versionValueEntry, 0, len(versions))
+		for _, v := range versions {
+			value, err := client.GetSecret(ctx, secretName, v.Version)
+			if err != nil {
+				return secretVersionValuesLoadedMsg{vault: vaultName, name: secretName, err: err}
+			}
+			entries = append(entries, versionValueEntry{Version: v.Version, Created: v.Created, Value: value})
+		}
+		return secretVersionValuesLoadedMsg{vault: vaultName, name: secretName, entries: entries}
 	}
 }
 

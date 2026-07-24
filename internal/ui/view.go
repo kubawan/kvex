@@ -56,6 +56,8 @@ func (m Model) bannerLine() string {
 	switch {
 	case m.editMode:
 		return editBannerStyle.Render(" EDIT MODE — ctrl+s save · esc cancel ")
+	case m.comparingCount > 0:
+		return versionBannerStyle.Render(" " + m.comparingSummary + " — read-only ")
 	case m.currentVersion != "":
 		short := m.currentVersion
 		if len(short) > 12 {
@@ -74,6 +76,6 @@ func (m Model) statusLine() string {
 		style = errorStatusStyle
 		text = m.err.Error()
 	}
-	help := "tab: switch pane · enter: select · e: edit · v: versions · q: quit"
+	help := "tab: switch pane · enter: select · e: edit · v: versions · space: mark · q: quit"
 	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, help))
 }
