@@ -76,6 +76,6 @@ func (m Model) statusLine() string {
 		style = errorStatusStyle
 		text = m.err.Error()
 	}
-	help := "tab: switch pane · enter: select · e: edit · v: versions · space: mark · q: quit"
+	help := "←/→: switch pane · enter: select · e: edit · v: versions · space: mark · q: quit"
 	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, help))
 }

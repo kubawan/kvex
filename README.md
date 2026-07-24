@@ -103,10 +103,11 @@ kvex --config examples/config.yaml
 
 | Key | Action |
 |---|---|
-| `tab` / `shift+tab` | cycle focus between panes |
+| `→`/`←` | cycle focus between panes |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
-| `enter` | select vault / secret / version |
+| `enter` | select vault / secret / version (2+ marked versions → compare) |
+| `space` / `x` | mark a version for comparison (versions panel) |
 | `e` | toggle edit mode (only on the latest version) |
 | `ctrl+s` | save value while in edit mode |
 | `esc` | cancel edit / close version panel |

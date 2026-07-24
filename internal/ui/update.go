@@ -83,10 +83,10 @@ func (m Model) handleVaultsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
+	case "right":
 		m.focus = focusSecrets
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusDetail
 		return m, nil
 	case "enter":
@@ -110,10 +110,10 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
+	case "right":
 		m.focus = focusDetail
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusVaults
 		return m, nil
 	case "enter":
@@ -132,10 +132,10 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
+	case "right":
 		m.focus = focusVaults
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusSecrets
 		return m, nil
 	case "e":
@@ -216,10 +216,10 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusDetail
 		m.layout()
 		return m, nil
-	case "tab":
+	case "right":
 		m.focus = focusVaults
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusSecrets
 		return m, nil
 	case " ", "x":
