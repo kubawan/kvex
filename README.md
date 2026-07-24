@@ -45,7 +45,7 @@ Requires Go >= 1.25 and `az login` (auth goes through
 supports works — Azure CLI, managed identity, env vars, etc.).
 
 ```bash
-git clone git@github.com:kubawan/kvex.git
+git clone https://github.com/kubawan/kvex.git
 cd kvex
 ./install.sh
 ```
