@@ -165,20 +165,27 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // enterEditMode is shared by handleDetailKey and handleSecretsKey so 'e'
 // works whether or not the user has explicitly moved focus into the detail
 // pane — you shouldn't have to navigate panes just to edit what you're
-// already previewing.
+// already previewing. Editing a historical version is allowed: Key Vault
+// has no "edit in place" for an old version, so saving creates a new
+// (now-current) version seeded from that historical value. Comparing 2+
+// versions has no single coherent value to edit, so that stays blocked.
 func (m Model) enterEditMode() (Model, tea.Cmd) {
 	if m.currentSecretName == "" {
 		return m, nil
 	}
-	if m.currentVersion != "" || m.comparingCount > 0 {
-		m.status = "cannot edit here — select the latest version first"
+	if m.comparingCount > 0 {
+		m.status = "cannot edit while comparing versions — view a single version first"
 		return m, nil
 	}
 	m.editMode = true
 	m.editArea.SetValue(m.currentValue)
 	m.editArea.Focus()
 	m.focus = focusDetail
-	m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
+	if m.currentVersion != "" {
+		m.status = "EDIT MODE (from historical version — saves as a new current version) — ctrl+s to save, esc to cancel"
+	} else {
+		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
+	}
 	return m, nil
 }
 
@@ -266,52 +273,76 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			delete(m.markedVersions, item.version.Version)
 		}
-		cmd := m.versionList.SetItem(idx, item)
-		if len(m.markedVersions) > 0 {
-			m.status = fmt.Sprintf("%d version(s) marked — enter to compare", len(m.markedVersions))
-		}
-		return m, cmd
+		listCmd := m.versionList.SetItem(idx, item)
+		mm, previewCmd := m.previewMarkedVersions()
+		return mm, tea.Batch(listCmd, previewCmd)
 	case "enter":
-		client, err := m.clientFor(m.currentVaultName)
-		if err != nil {
-			m.err = err
-			m.status = err.Error()
-			return m, nil
-		}
-
-		if len(m.markedVersions) >= 2 {
-			var marked []azure.Version
-			for _, it := range m.versionList.Items() {
-				vi, ok := it.(versionItem)
-				if ok && m.markedVersions[vi.version.Version] {
-					marked = append(marked, vi.version)
-				}
+		if len(m.markedVersions) == 0 {
+			// Nothing marked yet: treat enter on the highlighted item the
+			// same as marking it, then jump into the detail pane to look.
+			idx := m.versionList.Index()
+			item, ok := m.versionList.SelectedItem().(versionItem)
+			if !ok {
+				return m, nil
 			}
-			m.loading = true
-			m.focus = focusDetail
-			m.status = fmt.Sprintf("loading %d versions to compare...", len(marked))
-			return m, fetchSecretVersionValuesCmd(client, m.currentVaultName, m.currentSecretName, marked)
+			item.marked = true
+			m.markedVersions[item.version.Version] = true
+			listCmd := m.versionList.SetItem(idx, item)
+			mm, previewCmd := m.previewMarkedVersions()
+			mm.focus = focusDetail
+			return mm, tea.Batch(listCmd, previewCmd)
 		}
-
-		item, ok := m.versionList.SelectedItem().(versionItem)
-		if !ok {
-			return m, nil
-		}
-		m.currentVersion = item.version.Version
-		m.comparingCount = 0
-		m.comparingSummary = ""
-		m.loading = true
-		m.focus = focusDetail
-		short := item.version.Version
-		if len(short) > 12 {
-			short = short[:12]
-		}
-		m.status = "loading version " + short + "..."
-		return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, item.version.Version)
+		mm, previewCmd := m.previewMarkedVersions()
+		mm.focus = focusDetail
+		return mm, previewCmd
 	}
 	var cmd tea.Cmd
 	m.versionList, cmd = m.versionList.Update(msg)
 	return m, cmd
+}
+
+// previewMarkedVersions fetches and displays whatever the current
+// markedVersions selection implies — nothing marked is a no-op (leaves
+// whatever's already shown), exactly one is a single read-only view, two or
+// more is a side-by-side comparison. It deliberately doesn't move focus, so
+// marking versions while browsing the list immediately updates the detail
+// pane without forcing you to leave the list.
+func (m Model) previewMarkedVersions() (Model, tea.Cmd) {
+	if len(m.markedVersions) == 0 {
+		return m, nil
+	}
+
+	client, err := m.clientFor(m.currentVaultName)
+	if err != nil {
+		m.err = err
+		m.status = err.Error()
+		return m, nil
+	}
+
+	var marked []azure.Version
+	for _, it := range m.versionList.Items() {
+		vi, ok := it.(versionItem)
+		if ok && vi.marked {
+			marked = append(marked, vi.version)
+		}
+	}
+
+	if len(marked) == 1 {
+		m.currentVersion = marked[0].Version
+		m.comparingCount = 0
+		m.comparingSummary = ""
+		m.loading = true
+		short := marked[0].Version
+		if len(short) > 12 {
+			short = short[:12]
+		}
+		m.status = "loading version " + short + "..."
+		return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, marked[0].Version)
+	}
+
+	m.loading = true
+	m.status = fmt.Sprintf("loading %d versions to compare...", len(marked))
+	return m, fetchSecretVersionValuesCmd(client, m.currentVaultName, m.currentSecretName, marked)
 }
 
 func (m *Model) setSecretItems(names []string) {
@@ -429,7 +460,7 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version]}
 	}
 	m.versionList.SetItems(items)
-	m.status = fmt.Sprintf("%d versions — space to mark, enter to compare 2+", len(msg.versions))
+	m.status = fmt.Sprintf("%d versions — space to preview, mark 2+ to compare", len(msg.versions))
 	return m, nil
 }
 
@@ -474,6 +505,7 @@ func (m Model) onSecretSaved(msg secretSavedMsg) (Model, tea.Cmd) {
 	m.editMode = false
 	m.editArea.Blur()
 	m.currentValue = value
+	m.currentVersion = "" // the save just created a new current version
 	m.detail.SetContent(value)
 	m.status = "saved new version"
 

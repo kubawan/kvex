@@ -63,7 +63,7 @@ func (m Model) bannerLine() string {
 		if len(short) > 12 {
 			short = short[:12]
 		}
-		return versionBannerStyle.Render(fmt.Sprintf(" viewing version %s — read-only ", short))
+		return versionBannerStyle.Render(fmt.Sprintf(" viewing version %s — press e to edit ", short))
 	default:
 		return readOnlyBannerStyle.Render(" READ-ONLY ")
 	}
