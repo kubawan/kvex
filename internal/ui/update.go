@@ -113,7 +113,11 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "right":
-		m.focus = focusDetail
+		if m.showVersions {
+			m.focus = focusVersions
+		} else {
+			m.focus = focusDetail
+		}
 		return m, nil
 	case "left":
 		m.focus = focusVaults
@@ -142,7 +146,11 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusVaults
 		return m, nil
 	case "left":
-		m.focus = focusSecrets
+		if m.showVersions {
+			m.focus = focusVersions
+		} else {
+			m.focus = focusSecrets
+		}
 		return m, nil
 	case "e":
 		return m.enterEditMode()
@@ -239,7 +247,7 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.layout()
 		return m, nil
 	case "right":
-		m.focus = focusVaults
+		m.focus = focusDetail
 		return m, nil
 	case "left":
 		m.focus = focusSecrets

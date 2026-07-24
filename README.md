@@ -103,7 +103,7 @@ kvex --config examples/config.yaml
 
 | Key | Action |
 |---|---|
-| `→`/`←` | cycle focus between panes |
+| `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail — versions only while its panel is open) |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
 | `enter` | select vault / secret / version (2+ marked versions → compare) |
