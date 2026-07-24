@@ -40,16 +40,25 @@ only with an extra explicit keypress.
 
 ## Install
 
-Requires Go and `az login` (auth goes through
+Requires Go >= 1.25 and `az login` (auth goes through
 `azidentity.NewDefaultAzureCredential`, so anything that credential chain
 supports works — Azure CLI, managed identity, env vars, etc.).
 
 ```bash
-go install ./cmd/kvex
+git clone https://github.com/kubawan/kvex.git
+cd kvex
+./install.sh
 ```
 
-This builds the `kvex` binary into `$(go env GOPATH)/bin` (typically
-`~/go/bin`) — make sure that's on your `PATH`.
+This builds `kvex` via `go install ./cmd/kvex`, writes a starter config to
+`~/.config/kvex/config.yaml` if one doesn't already exist, and warns you if
+`$(go env GOPATH)/bin` isn't on your `PATH`.
+
+Or do it by hand:
+
+```bash
+go install ./cmd/kvex
+```
 
 ## Configure
 
