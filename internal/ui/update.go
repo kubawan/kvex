@@ -14,7 +14,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.ready = true
+		if m.width > 0 && m.height > 0 {
+			m.ready = true
+		}
 		m.layout()
 		return m, nil
 
@@ -122,6 +124,10 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.selectSecret(item.name)
+	case "e":
+		return m.enterEditMode()
+	case "v":
+		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.secretList, cmd = m.secretList.Update(msg)
@@ -139,43 +145,59 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusSecrets
 		return m, nil
 	case "e":
-		if m.currentSecretName == "" {
-			return m, nil
-		}
-		if m.currentVersion != "" || m.comparingCount > 0 {
-			m.status = "cannot edit here — select the latest version first"
-			return m, nil
-		}
-		m.editMode = true
-		m.editArea.SetValue(m.currentValue)
-		m.editArea.Focus()
-		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
-		return m, nil
+		return m.enterEditMode()
 	case "v":
-		if m.currentSecretName == "" {
-			return m, nil
-		}
-		if m.showVersions {
-			m.showVersions = false
-			m.layout()
-			return m, nil
-		}
-		m.showVersions = true
-		m.focus = focusVersions
-		m.layout()
-		client, err := m.clientFor(m.currentVaultName)
-		if err != nil {
-			m.err = err
-			m.status = err.Error()
-			return m, nil
-		}
-		m.loading = true
-		m.status = "loading versions..."
-		return m, fetchSecretVersionsCmd(client, m.currentVaultName, m.currentSecretName)
+		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.detail, cmd = m.detail.Update(msg)
 	return m, cmd
+}
+
+// enterEditMode is shared by handleDetailKey and handleSecretsKey so 'e'
+// works whether or not the user has explicitly moved focus into the detail
+// pane — you shouldn't have to navigate panes just to edit what you're
+// already previewing.
+func (m Model) enterEditMode() (Model, tea.Cmd) {
+	if m.currentSecretName == "" {
+		return m, nil
+	}
+	if m.currentVersion != "" || m.comparingCount > 0 {
+		m.status = "cannot edit here — select the latest version first"
+		return m, nil
+	}
+	m.editMode = true
+	m.editArea.SetValue(m.currentValue)
+	m.editArea.Focus()
+	m.focus = focusDetail
+	m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
+	return m, nil
+}
+
+// toggleVersions is shared by handleDetailKey and handleSecretsKey, same
+// reasoning as enterEditMode.
+func (m Model) toggleVersions() (Model, tea.Cmd) {
+	if m.currentSecretName == "" {
+		return m, nil
+	}
+	if m.showVersions {
+		m.showVersions = false
+		m.focus = focusDetail
+		m.layout()
+		return m, nil
+	}
+	m.showVersions = true
+	m.focus = focusVersions
+	m.layout()
+	client, err := m.clientFor(m.currentVaultName)
+	if err != nil {
+		m.err = err
+		m.status = err.Error()
+		return m, nil
+	}
+	m.loading = true
+	m.status = "loading versions..."
+	return m, fetchSecretVersionsCmd(client, m.currentVaultName, m.currentSecretName)
 }
 
 func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -334,7 +356,10 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.markedVersions = make(map[string]bool)
 	m.comparingCount = 0
 	m.comparingSummary = ""
-	m.focus = focusDetail
+	// Deliberately don't move focus to the detail pane here: staying on the
+	// secrets list lets you preview values with just up/down + enter,
+	// without needing to navigate back after every single secret.
+	m.layout()
 	m.loading = true
 	m.detail.SetContent("loading...")
 	m.status = fmt.Sprintf("loading %s...", name)

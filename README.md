@@ -108,11 +108,17 @@ kvex --config examples/config.yaml
 | `/` | filter the focused list |
 | `enter` | select vault / secret / version (2+ marked versions → compare) |
 | `space` / `x` | mark a version for comparison (versions panel) |
-| `e` | toggle edit mode (only on the latest version) |
+| `e` | toggle edit mode (only on the latest version) — works from the secrets list too |
 | `ctrl+s` | save value while in edit mode |
 | `esc` | cancel edit / close version panel |
-| `v` | toggle version history panel |
+| `v` | toggle version history panel — works from the secrets list too |
 | `q` / `ctrl+c` | quit |
+
+Selecting a secret (`enter` in the secrets pane) loads its value into the
+detail pane but keeps focus on the secrets list, so you can preview several
+secrets in a row with just `↑`/`↓` + `enter` — no need to navigate back and
+forth between panes for a quick look. `e` and `v` also work directly from
+the secrets list on whatever secret is currently loaded.
 
 ## Development
 
