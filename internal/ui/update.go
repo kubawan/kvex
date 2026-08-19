@@ -234,22 +234,36 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		mm, previewCmd := m.previewMarkedVersions()
 		return mm, tea.Batch(listCmd, previewCmd)
 	case "enter":
-		if len(m.markedVersions) == 0 {
-			// Nothing marked yet: treat enter on the highlighted item the
-			// same as marking it, then preview it — same as space/x, but
-			// via enter for muscle-memory consistency with the other panes.
-			idx := m.versionList.Index()
-			item, ok := m.versionList.SelectedItem().(versionItem)
-			if !ok {
-				return m, nil
-			}
-			item.marked = true
-			m.markedVersions[item.version.Version] = true
-			listCmd := m.versionList.SetItem(idx, item)
-			mm, previewCmd := m.previewMarkedVersions()
-			return mm, tea.Batch(listCmd, previewCmd)
+		idx := m.versionList.Index()
+		item, ok := m.versionList.SelectedItem().(versionItem)
+		if !ok {
+			return m, nil
 		}
-		return m.previewMarkedVersions()
+		if item.marked && len(m.markedVersions) == 1 {
+			// Already the sole preview — nothing to change.
+			return m, nil
+		}
+		// enter always previews exactly the highlighted version, replacing
+		// whatever was marked before. Building a multi-version comparison
+		// is space/x's job, not enter's — this just lets you step through
+		// versions one at a time without unmarking in between.
+		items := m.versionList.Items()
+		cmds := make([]tea.Cmd, 0, len(items)+1)
+		m.markedVersions = make(map[string]bool)
+		for i, it := range items {
+			vi, ok := it.(versionItem)
+			if !ok || i == idx || !vi.marked {
+				continue
+			}
+			vi.marked = false
+			cmds = append(cmds, m.versionList.SetItem(i, vi))
+		}
+		item.marked = true
+		m.markedVersions[item.version.Version] = true
+		cmds = append(cmds, m.versionList.SetItem(idx, item))
+		mm, previewCmd := m.previewMarkedVersions()
+		cmds = append(cmds, previewCmd)
+		return mm, tea.Batch(cmds...)
 	}
 	var cmd tea.Cmd
 	m.versionList, cmd = m.versionList.Update(msg)
