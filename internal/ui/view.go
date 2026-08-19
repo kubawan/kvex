@@ -56,12 +56,14 @@ func (m Model) bannerLine() string {
 	switch {
 	case m.editMode:
 		return editBannerStyle.Render(" EDIT MODE — ctrl+s save · esc cancel ")
+	case m.comparingCount > 0:
+		return versionBannerStyle.Render(" " + m.comparingSummary + " — read-only ")
 	case m.currentVersion != "":
 		short := m.currentVersion
 		if len(short) > 12 {
 			short = short[:12]
 		}
-		return versionBannerStyle.Render(fmt.Sprintf(" viewing version %s — read-only ", short))
+		return versionBannerStyle.Render(fmt.Sprintf(" viewing version %s — press e to edit ", short))
 	default:
 		return readOnlyBannerStyle.Render(" READ-ONLY ")
 	}
@@ -74,6 +76,6 @@ func (m Model) statusLine() string {
 		style = errorStatusStyle
 		text = m.err.Error()
 	}
-	help := "tab: switch pane · enter: select · e: edit · v: versions · q: quit"
+	help := "←/→: switch pane · enter: select · e: edit · v: versions · space: mark · q: quit"
 	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, help))
 }

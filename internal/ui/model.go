@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/charmbracelet/bubbles/list"
@@ -28,8 +29,8 @@ type Model struct {
 	vaults []config.Vault
 	cred   azcore.TokenCredential
 
-	clients          map[string]*azure.Client // vault name -> client, lazy
-	secretNamesCache map[string][]string      // vault name -> cached secret names
+	clients          map[string]azure.SecretsClient // vault name -> client, lazy
+	secretNamesCache map[string][]string            // vault name -> cached secret names
 
 	vaultList   list.Model
 	secretList  list.Model
@@ -48,6 +49,10 @@ type Model struct {
 	currentSecretName string
 	currentVersion    string // "" means latest/current
 	currentValue      string
+
+	markedVersions   map[string]bool // version ID -> marked for comparison, scoped to currentSecretName
+	comparingCount   int             // number of versions in the currently displayed comparison, 0 if none
+	comparingSummary string          // short description shown in the banner while comparing
 
 	width, height int
 	ready         bool
@@ -81,8 +86,9 @@ func New(cfg *config.Config, cred azcore.TokenCredential) Model {
 	return Model{
 		vaults:           cfg.Vaults,
 		cred:             cred,
-		clients:          make(map[string]*azure.Client),
+		clients:          make(map[string]azure.SecretsClient),
 		secretNamesCache: make(map[string][]string),
+		markedVersions:   make(map[string]bool),
 		vaultList:        vaultList,
 		secretList:       secretList,
 		versionList:      versionList,
@@ -97,8 +103,10 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// clientFor returns the (lazily created) azure.Client for a vault name.
-func (m *Model) clientFor(vaultName string) (*azure.Client, error) {
+// clientFor returns the (lazily created) client for a vault name. Vaults
+// configured with a "mock://" URI get an in-memory MockClient instead of a
+// real azsecrets-backed Client, so they work without any Azure credential.
+func (m *Model) clientFor(vaultName string) (azure.SecretsClient, error) {
 	if c, ok := m.clients[vaultName]; ok {
 		return c, nil
 	}
@@ -112,6 +120,13 @@ func (m *Model) clientFor(vaultName string) (*azure.Client, error) {
 	if uri == "" {
 		return nil, fmt.Errorf("unknown vault %q", vaultName)
 	}
+
+	if strings.HasPrefix(uri, azure.MockScheme) {
+		c := azure.NewMockClient()
+		m.clients[vaultName] = c
+		return c, nil
+	}
+
 	c, err := azure.NewClient(uri, m.cred)
 	if err != nil {
 		return nil, err

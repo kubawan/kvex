@@ -32,9 +32,11 @@ func (i secretItem) Title() string       { return i.name }
 func (i secretItem) Description() string { return "" }
 func (i secretItem) FilterValue() string { return i.name }
 
-// versionItem adapts azure.Version for display in a bubbles/list.
+// versionItem adapts azure.Version for display in a bubbles/list. marked
+// tracks whether this version is selected for side-by-side comparison.
 type versionItem struct {
 	version azure.Version
+	marked  bool
 }
 
 func (i versionItem) Title() string {
@@ -42,10 +44,15 @@ func (i versionItem) Title() string {
 	if len(v) > 12 {
 		v = v[:12]
 	}
-	if !i.version.Enabled {
-		return v + " (disabled)"
+	box := "☐"
+	if i.marked {
+		box = "☑"
 	}
-	return v
+	title := box + " " + v
+	if !i.version.Enabled {
+		title += " (disabled)"
+	}
+	return title
 }
 
 func (i versionItem) Description() string {

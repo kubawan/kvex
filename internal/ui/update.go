@@ -2,16 +2,21 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"kvex/internal/azure"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.ready = true
+		if m.width > 0 && m.height > 0 {
+			m.ready = true
+		}
 		m.layout()
 		return m, nil
 
@@ -29,6 +34,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case secretSavedMsg:
 		return m.onSecretSaved(msg)
+
+	case secretVersionValuesLoadedMsg:
+		return m.onSecretVersionValuesLoaded(msg)
 	}
 
 	// Non-key, non-app messages (e.g. cursor blink ticks) go to whichever
@@ -77,10 +85,10 @@ func (m Model) handleVaultsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
+	case "right":
 		m.focus = focusSecrets
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusDetail
 		return m, nil
 	case "enter":
@@ -104,10 +112,14 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
-		m.focus = focusDetail
+	case "right":
+		if m.showVersions {
+			m.focus = focusVersions
+		} else {
+			m.focus = focusDetail
+		}
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusVaults
 		return m, nil
 	case "enter":
@@ -116,6 +128,10 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.selectSecret(item.name)
+	case "e":
+		return m.enterEditMode()
+	case "v":
+		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.secretList, cmd = m.secretList.Update(msg)
@@ -126,50 +142,77 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "tab":
+	case "right":
 		m.focus = focusVaults
 		return m, nil
-	case "shift+tab":
-		m.focus = focusSecrets
+	case "left":
+		if m.showVersions {
+			m.focus = focusVersions
+		} else {
+			m.focus = focusSecrets
+		}
 		return m, nil
 	case "e":
-		if m.currentSecretName == "" {
-			return m, nil
-		}
-		if m.currentVersion != "" {
-			m.status = "cannot edit a historical version — select the latest version first"
-			return m, nil
-		}
-		m.editMode = true
-		m.editArea.SetValue(m.currentValue)
-		m.editArea.Focus()
-		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
-		return m, nil
+		return m.enterEditMode()
 	case "v":
-		if m.currentSecretName == "" {
-			return m, nil
-		}
-		if m.showVersions {
-			m.showVersions = false
-			m.layout()
-			return m, nil
-		}
-		m.showVersions = true
-		m.focus = focusVersions
-		m.layout()
-		client, err := m.clientFor(m.currentVaultName)
-		if err != nil {
-			m.err = err
-			m.status = err.Error()
-			return m, nil
-		}
-		m.loading = true
-		m.status = "loading versions..."
-		return m, fetchSecretVersionsCmd(client, m.currentVaultName, m.currentSecretName)
+		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.detail, cmd = m.detail.Update(msg)
 	return m, cmd
+}
+
+// enterEditMode is shared by handleDetailKey and handleSecretsKey so 'e'
+// works whether or not the user has explicitly moved focus into the detail
+// pane — you shouldn't have to navigate panes just to edit what you're
+// already previewing. Editing a historical version is allowed: Key Vault
+// has no "edit in place" for an old version, so saving creates a new
+// (now-current) version seeded from that historical value. Comparing 2+
+// versions has no single coherent value to edit, so that stays blocked.
+func (m Model) enterEditMode() (Model, tea.Cmd) {
+	if m.currentSecretName == "" {
+		return m, nil
+	}
+	if m.comparingCount > 0 {
+		m.status = "cannot edit while comparing versions — view a single version first"
+		return m, nil
+	}
+	m.editMode = true
+	m.editArea.SetValue(m.currentValue)
+	m.editArea.Focus()
+	m.focus = focusDetail
+	if m.currentVersion != "" {
+		m.status = "EDIT MODE (from historical version — saves as a new current version) — ctrl+s to save, esc to cancel"
+	} else {
+		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
+	}
+	return m, nil
+}
+
+// toggleVersions is shared by handleDetailKey and handleSecretsKey, same
+// reasoning as enterEditMode.
+func (m Model) toggleVersions() (Model, tea.Cmd) {
+	if m.currentSecretName == "" {
+		return m, nil
+	}
+	if m.showVersions {
+		m.showVersions = false
+		m.focus = focusDetail
+		m.layout()
+		return m, nil
+	}
+	m.showVersions = true
+	m.focus = focusVersions
+	m.layout()
+	client, err := m.clientFor(m.currentVaultName)
+	if err != nil {
+		m.err = err
+		m.status = err.Error()
+		return m, nil
+	}
+	m.loading = true
+	m.status = "loading versions..."
+	return m, fetchSecretVersionsCmd(client, m.currentVaultName, m.currentSecretName)
 }
 
 func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -210,36 +253,96 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusDetail
 		m.layout()
 		return m, nil
-	case "tab":
-		m.focus = focusVaults
+	case "right":
+		m.focus = focusDetail
 		return m, nil
-	case "shift+tab":
+	case "left":
 		m.focus = focusSecrets
 		return m, nil
-	case "enter":
+	case "e":
+		return m.enterEditMode()
+	case " ", "x":
+		idx := m.versionList.Index()
 		item, ok := m.versionList.SelectedItem().(versionItem)
 		if !ok {
 			return m, nil
 		}
-		client, err := m.clientFor(m.currentVaultName)
-		if err != nil {
-			m.err = err
-			m.status = err.Error()
-			return m, nil
+		item.marked = !item.marked
+		if item.marked {
+			m.markedVersions[item.version.Version] = true
+		} else {
+			delete(m.markedVersions, item.version.Version)
 		}
-		m.currentVersion = item.version.Version
-		m.loading = true
-		m.focus = focusDetail
-		short := item.version.Version
-		if len(short) > 12 {
-			short = short[:12]
+		listCmd := m.versionList.SetItem(idx, item)
+		mm, previewCmd := m.previewMarkedVersions()
+		return mm, tea.Batch(listCmd, previewCmd)
+	case "enter":
+		if len(m.markedVersions) == 0 {
+			// Nothing marked yet: treat enter on the highlighted item the
+			// same as marking it, then jump into the detail pane to look.
+			idx := m.versionList.Index()
+			item, ok := m.versionList.SelectedItem().(versionItem)
+			if !ok {
+				return m, nil
+			}
+			item.marked = true
+			m.markedVersions[item.version.Version] = true
+			listCmd := m.versionList.SetItem(idx, item)
+			mm, previewCmd := m.previewMarkedVersions()
+			mm.focus = focusDetail
+			return mm, tea.Batch(listCmd, previewCmd)
 		}
-		m.status = "loading version " + short + "..."
-		return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, item.version.Version)
+		mm, previewCmd := m.previewMarkedVersions()
+		mm.focus = focusDetail
+		return mm, previewCmd
 	}
 	var cmd tea.Cmd
 	m.versionList, cmd = m.versionList.Update(msg)
 	return m, cmd
+}
+
+// previewMarkedVersions fetches and displays whatever the current
+// markedVersions selection implies — nothing marked is a no-op (leaves
+// whatever's already shown), exactly one is a single read-only view, two or
+// more is a side-by-side comparison. It deliberately doesn't move focus, so
+// marking versions while browsing the list immediately updates the detail
+// pane without forcing you to leave the list.
+func (m Model) previewMarkedVersions() (Model, tea.Cmd) {
+	if len(m.markedVersions) == 0 {
+		return m, nil
+	}
+
+	client, err := m.clientFor(m.currentVaultName)
+	if err != nil {
+		m.err = err
+		m.status = err.Error()
+		return m, nil
+	}
+
+	var marked []azure.Version
+	for _, it := range m.versionList.Items() {
+		vi, ok := it.(versionItem)
+		if ok && vi.marked {
+			marked = append(marked, vi.version)
+		}
+	}
+
+	if len(marked) == 1 {
+		m.currentVersion = marked[0].Version
+		m.comparingCount = 0
+		m.comparingSummary = ""
+		m.loading = true
+		short := marked[0].Version
+		if len(short) > 12 {
+			short = short[:12]
+		}
+		m.status = "loading version " + short + "..."
+		return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, marked[0].Version)
+	}
+
+	m.loading = true
+	m.status = fmt.Sprintf("loading %d versions to compare...", len(marked))
+	return m, fetchSecretVersionValuesCmd(client, m.currentVaultName, m.currentSecretName, marked)
 }
 
 func (m *Model) setSecretItems(names []string) {
@@ -257,6 +360,9 @@ func (m Model) selectVault(name string) (Model, tea.Cmd) {
 	m.currentValue = ""
 	m.editMode = false
 	m.showVersions = false
+	m.markedVersions = make(map[string]bool)
+	m.comparingCount = 0
+	m.comparingSummary = ""
 	m.focus = focusSecrets
 
 	if names, ok := m.secretNamesCache[name]; ok {
@@ -288,7 +394,13 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.currentVersion = ""
 	m.editMode = false
 	m.showVersions = false
-	m.focus = focusDetail
+	m.markedVersions = make(map[string]bool)
+	m.comparingCount = 0
+	m.comparingSummary = ""
+	// Deliberately don't move focus to the detail pane here: staying on the
+	// secrets list lets you preview values with just up/down + enter,
+	// without needing to navigate back after every single secret.
+	m.layout()
 	m.loading = true
 	m.detail.SetContent("loading...")
 	m.status = fmt.Sprintf("loading %s...", name)
@@ -320,6 +432,8 @@ func (m Model) onSecretValueLoaded(msg secretValueLoadedMsg) (Model, tea.Cmd) {
 	}
 	if m.currentVaultName == msg.vault && m.currentSecretName == msg.name {
 		m.currentValue = msg.value
+		m.comparingCount = 0
+		m.comparingSummary = ""
 		m.detail.SetContent(msg.value)
 		if msg.version == "" {
 			m.status = "READ-ONLY"
@@ -343,10 +457,40 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 	}
 	items := make([]list.Item, len(msg.versions))
 	for i, v := range msg.versions {
-		items[i] = versionItem{version: v}
+		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version]}
 	}
 	m.versionList.SetItems(items)
-	m.status = fmt.Sprintf("%d versions", len(msg.versions))
+	m.status = fmt.Sprintf("%d versions — space to preview, mark 2+ to compare", len(msg.versions))
+	return m, nil
+}
+
+// onSecretVersionValuesLoaded renders two or more marked versions'
+// values stacked in the detail pane for side-by-side comparison. Always
+// read-only, regardless of edit mode elsewhere.
+func (m Model) onSecretVersionValuesLoaded(msg secretVersionValuesLoadedMsg) (Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		m.err = msg.err
+		m.status = "error comparing versions: " + msg.err.Error()
+		return m, nil
+	}
+	if m.currentVaultName != msg.vault || m.currentSecretName != msg.name {
+		return m, nil
+	}
+
+	blocks := make([]string, len(msg.entries))
+	for i, e := range msg.entries {
+		short := e.Version
+		if len(short) > 12 {
+			short = short[:12]
+		}
+		blocks[i] = fmt.Sprintf("── %s · %s ──\n%s", short, e.Created, e.Value)
+	}
+	m.detail.SetContent(strings.Join(blocks, "\n\n"))
+	m.currentVersion = ""
+	m.comparingCount = len(msg.entries)
+	m.comparingSummary = fmt.Sprintf("comparing %d versions", len(msg.entries))
+	m.status = m.comparingSummary + " — read-only"
 	return m, nil
 }
 
@@ -361,6 +505,7 @@ func (m Model) onSecretSaved(msg secretSavedMsg) (Model, tea.Cmd) {
 	m.editMode = false
 	m.editArea.Blur()
 	m.currentValue = value
+	m.currentVersion = "" // the save just created a new current version
 	m.detail.SetContent(value)
 	m.status = "saved new version"
 

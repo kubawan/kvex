@@ -12,10 +12,22 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 )
 
+// SecretsClient is the set of vault operations the UI depends on. The real
+// Client (backed by azsecrets) and MockClient (an in-memory fake for local
+// testing without Azure access) both implement it.
+type SecretsClient interface {
+	ListSecretNames(ctx context.Context) ([]string, error)
+	GetSecret(ctx context.Context, name, version string) (string, error)
+	SetSecret(ctx context.Context, name, value string) error
+	ListSecretVersions(ctx context.Context, name string) ([]Version, error)
+}
+
 // Client wraps a single vault's azsecrets.Client.
 type Client struct {
 	secrets *azsecrets.Client
 }
+
+var _ SecretsClient = (*Client)(nil)
 
 // NewClient creates a Client for the given vault URI using the supplied
 // credential (a single azidentity.DefaultAzureCredential is shared across

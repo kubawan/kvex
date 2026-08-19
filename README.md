@@ -78,6 +78,23 @@ vaults:
 
 See [examples/config.yaml](examples/config.yaml).
 
+### Mock vault (no Azure access needed)
+
+A vault configured with a `mock://` URI is backed by an in-memory fake
+instead of a real Key Vault — no credential, no network, pre-seeded with a
+handful of sample secrets (including one with multiple versions, to exercise
+the version-history panel). Useful for trying kvex out or developing the UI
+without Azure access:
+
+```yaml
+vaults:
+  - name: mock
+    uri: mock://local
+```
+
+This is already the first entry in [examples/config.yaml](examples/config.yaml),
+so a fresh `./install.sh` gives you something to click around in immediately.
+
 ## Usage
 
 ```bash
@@ -86,15 +103,27 @@ kvex --config examples/config.yaml
 
 | Key | Action |
 |---|---|
-| `tab` / `shift+tab` | cycle focus between panes |
+| `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail — versions only while its panel is open) |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
-| `enter` | select vault / secret / version |
-| `e` | toggle edit mode (only on the latest version) |
+| `enter` | select vault / secret; in the versions panel, view the highlighted version (or the marked set, if any) and jump into the detail pane |
+| `space` / `x` | mark a version — immediately previews it (or, with 2+ marked, the comparison) in the detail pane, no `enter` needed |
+| `e` | edit mode, including on a historical version — works from the secrets list and versions panel too |
 | `ctrl+s` | save value while in edit mode |
 | `esc` | cancel edit / close version panel |
-| `v` | toggle version history panel |
+| `v` | toggle version history panel — works from the secrets list too |
 | `q` / `ctrl+c` | quit |
+
+Selecting a secret (`enter` in the secrets pane) loads its value into the
+detail pane but keeps focus on the secrets list, so you can preview several
+secrets in a row with just `↑`/`↓` + `enter` — no need to navigate back and
+forth between panes for a quick look. `e` and `v` also work directly from
+the secrets list on whatever secret is currently loaded.
+
+Editing is allowed on any single version, not just the latest — Key Vault
+has no "edit in place" for an old version, so saving always creates a new
+current version seeded from whatever value you were looking at. Comparing
+2+ versions has no single value to edit, so that stays blocked.
 
 ## Development
 

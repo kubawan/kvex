@@ -38,7 +38,22 @@ type secretSavedMsg struct {
 	err   error
 }
 
-func fetchSecretNamesCmd(client *azure.Client, vaultName string) tea.Cmd {
+// versionValueEntry pairs a fetched version's value with its metadata, for
+// side-by-side display in the detail pane.
+type versionValueEntry struct {
+	Version string
+	Created string
+	Value   string
+}
+
+type secretVersionValuesLoadedMsg struct {
+	vault   string
+	name    string
+	entries []versionValueEntry
+	err     error
+}
+
+func fetchSecretNamesCmd(client azure.SecretsClient, vaultName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -47,7 +62,7 @@ func fetchSecretNamesCmd(client *azure.Client, vaultName string) tea.Cmd {
 	}
 }
 
-func fetchSecretValueCmd(client *azure.Client, vaultName, secretName, version string) tea.Cmd {
+func fetchSecretValueCmd(client azure.SecretsClient, vaultName, secretName, version string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -56,7 +71,7 @@ func fetchSecretValueCmd(client *azure.Client, vaultName, secretName, version st
 	}
 }
 
-func fetchSecretVersionsCmd(client *azure.Client, vaultName, secretName string) tea.Cmd {
+func fetchSecretVersionsCmd(client azure.SecretsClient, vaultName, secretName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
@@ -65,7 +80,25 @@ func fetchSecretVersionsCmd(client *azure.Client, vaultName, secretName string) 
 	}
 }
 
-func saveSecretCmd(client *azure.Client, vaultName, secretName, value string) tea.Cmd {
+// fetchSecretVersionValuesCmd fetches the value of each given version,
+// sequentially, and bundles them into one message for side-by-side display.
+func fetchSecretVersionValuesCmd(client azure.SecretsClient, vaultName, secretName string, versions []azure.Version) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
+		defer cancel()
+		entries := make([]versionValueEntry, 0, len(versions))
+		for _, v := range versions {
+			value, err := client.GetSecret(ctx, secretName, v.Version)
+			if err != nil {
+				return secretVersionValuesLoadedMsg{vault: vaultName, name: secretName, err: err}
+			}
+			entries = append(entries, versionValueEntry{Version: v.Version, Created: v.Created, Value: value})
+		}
+		return secretVersionValuesLoadedMsg{vault: vaultName, name: secretName, entries: entries}
+	}
+}
+
+func saveSecretCmd(client azure.SecretsClient, vaultName, secretName, value string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), apiTimeout)
 		defer cancel()
