@@ -106,8 +106,8 @@ kvex --config examples/config.yaml
 | `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail) |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
-| `enter` | select a vault (moves into the secrets pane); in the secrets/versions panes, load/preview the highlighted item (or the marked set, for versions) without moving focus |
-| `space` / `x` | mark a version — immediately previews it (or, with 2+ marked, the comparison) in the detail pane, no `enter` needed |
+| `enter` | select a vault (moves into the secrets pane); in the secrets pane, load the highlighted secret; in the versions pane, preview the highlighted version — none of these move focus except selecting a vault |
+| `space` / `x` | mark a version for comparison — immediately previews it (or, with 2+ marked, the comparison) in the detail pane |
 | `e` | edit mode, including on a historical version — works from the secrets list and versions panel too |
 | `ctrl+s` | save value while in edit mode |
 | `esc` | cancel edit |
@@ -117,8 +117,9 @@ Selecting a secret (`enter` in the secrets pane) loads its value and version
 history into the detail and versions panes but keeps focus on the secrets
 list, so you can preview several secrets in a row with just `↑`/`↓` + `enter`
 — no need to navigate back and forth between panes for a quick look. The
-versions pane works the same way: `enter` (or `space`/`x`) previews a version
-or marked comparison in the detail pane without leaving the versions list.
+versions pane works the same way: `enter` steps through versions one at a
+time without leaving the versions list, and without marking anything —
+marking (for a multi-version comparison) is `space`/`x`'s job alone.
 `e` also works directly from the secrets list on whatever secret is
 currently loaded.
 
