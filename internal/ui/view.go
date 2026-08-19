@@ -38,14 +38,11 @@ func (m Model) View() string {
 		Width(m.detail.Width).Height(1 + detailContentHeight).
 		Render(detailInner)
 
-	panes := []string{vaultsBox, secretsBox}
-	if m.showVersions {
-		versionsBox := paneStyle(m.focus == focusVersions).
-			Width(m.versionList.Width()).Height(m.versionList.Height()).
-			Render(m.versionList.View())
-		panes = append(panes, versionsBox)
-	}
-	panes = append(panes, detailBox)
+	versionsBox := paneStyle(m.focus == focusVersions).
+		Width(m.versionList.Width()).Height(m.versionList.Height()).
+		Render(m.versionList.View())
+
+	panes := []string{vaultsBox, secretsBox, versionsBox, detailBox}
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, panes...)
 
@@ -76,6 +73,6 @@ func (m Model) statusLine() string {
 		style = errorStatusStyle
 		text = m.err.Error()
 	}
-	help := "←/→: switch pane · enter: select · e: edit · v: versions · space: mark · q: quit"
+	help := "←/→: switch pane · enter: select · e: edit · space: mark · q: quit"
 	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, help))
 }

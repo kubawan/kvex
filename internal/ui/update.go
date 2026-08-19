@@ -113,11 +113,7 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "right":
-		if m.showVersions {
-			m.focus = focusVersions
-		} else {
-			m.focus = focusDetail
-		}
+		m.focus = focusVersions
 		return m, nil
 	case "left":
 		m.focus = focusVaults
@@ -130,8 +126,6 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.selectSecret(item.name)
 	case "e":
 		return m.enterEditMode()
-	case "v":
-		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.secretList, cmd = m.secretList.Update(msg)
@@ -146,16 +140,10 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = focusVaults
 		return m, nil
 	case "left":
-		if m.showVersions {
-			m.focus = focusVersions
-		} else {
-			m.focus = focusSecrets
-		}
+		m.focus = focusVersions
 		return m, nil
 	case "e":
 		return m.enterEditMode()
-	case "v":
-		return m.toggleVersions()
 	}
 	var cmd tea.Cmd
 	m.detail, cmd = m.detail.Update(msg)
@@ -187,32 +175,6 @@ func (m Model) enterEditMode() (Model, tea.Cmd) {
 		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
 	}
 	return m, nil
-}
-
-// toggleVersions is shared by handleDetailKey and handleSecretsKey, same
-// reasoning as enterEditMode.
-func (m Model) toggleVersions() (Model, tea.Cmd) {
-	if m.currentSecretName == "" {
-		return m, nil
-	}
-	if m.showVersions {
-		m.showVersions = false
-		m.focus = focusDetail
-		m.layout()
-		return m, nil
-	}
-	m.showVersions = true
-	m.focus = focusVersions
-	m.layout()
-	client, err := m.clientFor(m.currentVaultName)
-	if err != nil {
-		m.err = err
-		m.status = err.Error()
-		return m, nil
-	}
-	m.loading = true
-	m.status = "loading versions..."
-	return m, fetchSecretVersionsCmd(client, m.currentVaultName, m.currentSecretName)
 }
 
 func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -248,11 +210,6 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "esc", "v":
-		m.showVersions = false
-		m.focus = focusDetail
-		m.layout()
-		return m, nil
 	case "right":
 		m.focus = focusDetail
 		return m, nil
@@ -359,10 +316,10 @@ func (m Model) selectVault(name string) (Model, tea.Cmd) {
 	m.currentVersion = ""
 	m.currentValue = ""
 	m.editMode = false
-	m.showVersions = false
 	m.markedVersions = make(map[string]bool)
 	m.comparingCount = 0
 	m.comparingSummary = ""
+	m.versionList.SetItems(nil)
 	m.focus = focusSecrets
 
 	if names, ok := m.secretNamesCache[name]; ok {
@@ -393,10 +350,10 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.currentSecretName = name
 	m.currentVersion = ""
 	m.editMode = false
-	m.showVersions = false
 	m.markedVersions = make(map[string]bool)
 	m.comparingCount = 0
 	m.comparingSummary = ""
+	m.versionList.SetItems(nil)
 	// Deliberately don't move focus to the detail pane here: staying on the
 	// secrets list lets you preview values with just up/down + enter,
 	// without needing to navigate back after every single secret.
@@ -404,7 +361,10 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.loading = true
 	m.detail.SetContent("loading...")
 	m.status = fmt.Sprintf("loading %s...", name)
-	return m, fetchSecretValueCmd(client, m.currentVaultName, name, "")
+	return m, tea.Batch(
+		fetchSecretValueCmd(client, m.currentVaultName, name, ""),
+		fetchSecretVersionsCmd(client, m.currentVaultName, name),
+	)
 }
 
 func (m Model) onSecretNamesLoaded(msg secretNamesLoadedMsg) (Model, tea.Cmd) {
@@ -453,6 +413,9 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 	if msg.err != nil {
 		m.err = msg.err
 		m.status = "error listing versions: " + msg.err.Error()
+		return m, nil
+	}
+	if m.currentVaultName != msg.vault || m.currentSecretName != msg.name {
 		return m, nil
 	}
 	items := make([]list.Item, len(msg.versions))
