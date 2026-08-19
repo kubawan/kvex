@@ -22,8 +22,8 @@ Feature 2 (cross-vault compare) is not built yet.
 - Enter on a secret lazily fetches its current value into the detail pane
 - Default mode is **read-only**; `e` toggles edit mode with a persistent,
   hard-to-miss banner
-- Version history panel (`v`) — always read-only, even while edit mode is
-  active elsewhere
+- Version history panel — always visible alongside the secrets list and
+  detail pane, always read-only even while edit mode is active elsewhere
 
 ### Feature 2 — Cross-vault compare (not implemented yet)
 
@@ -103,22 +103,22 @@ kvex --config examples/config.yaml
 
 | Key | Action |
 |---|---|
-| `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail — versions only while its panel is open) |
+| `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail) |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
 | `enter` | select vault / secret; in the versions panel, view the highlighted version (or the marked set, if any) and jump into the detail pane |
 | `space` / `x` | mark a version — immediately previews it (or, with 2+ marked, the comparison) in the detail pane, no `enter` needed |
 | `e` | edit mode, including on a historical version — works from the secrets list and versions panel too |
 | `ctrl+s` | save value while in edit mode |
-| `esc` | cancel edit / close version panel |
-| `v` | toggle version history panel — works from the secrets list too |
+| `esc` | cancel edit |
 | `q` / `ctrl+c` | quit |
 
-Selecting a secret (`enter` in the secrets pane) loads its value into the
-detail pane but keeps focus on the secrets list, so you can preview several
-secrets in a row with just `↑`/`↓` + `enter` — no need to navigate back and
-forth between panes for a quick look. `e` and `v` also work directly from
-the secrets list on whatever secret is currently loaded.
+Selecting a secret (`enter` in the secrets pane) loads its value and version
+history into the detail and versions panes but keeps focus on the secrets
+list, so you can preview several secrets in a row with just `↑`/`↓` + `enter`
+— no need to navigate back and forth between panes for a quick look. `e`
+also works directly from the secrets list on whatever secret is currently
+loaded.
 
 Editing is allowed on any single version, not just the latest — Key Vault
 has no "edit in place" for an old version, so saving always creates a new

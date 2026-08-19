@@ -38,12 +38,11 @@ type Model struct {
 	detail      viewport.Model
 	editArea    textarea.Model
 
-	focus        focus
-	editMode     bool
-	showVersions bool
-	loading      bool
-	status       string
-	err          error
+	focus    focus
+	editMode bool
+	loading  bool
+	status   string
+	err      error
 
 	currentVaultName  string
 	currentSecretName string
@@ -151,11 +150,9 @@ func (m *Model) layout() {
 	vaultsWidth := m.width * 18 / 100
 	secretsWidth := m.width * 34 / 100
 	detailWidth := m.width - vaultsWidth - secretsWidth
-	if m.showVersions {
-		versionsWidth := detailWidth * 40 / 100
-		detailWidth -= versionsWidth
-		m.versionList.SetSize(versionsWidth-2, bodyHeight-2)
-	}
+	versionsWidth := detailWidth * 40 / 100
+	detailWidth -= versionsWidth
+	m.versionList.SetSize(versionsWidth-2, bodyHeight-2)
 
 	m.vaultList.SetSize(vaultsWidth-2, bodyHeight-2)
 	m.secretList.SetSize(secretsWidth-2, bodyHeight-2)
