@@ -106,7 +106,7 @@ kvex --config examples/config.yaml
 | `→`/`←` | cycle focus between panes (vaults ↔ secrets ↔ versions ↔ detail) |
 | `↑`/`↓`, `j`/`k` | move selection within a pane |
 | `/` | filter the focused list |
-| `enter` | select vault / secret; in the versions panel, view the highlighted version (or the marked set, if any) and jump into the detail pane |
+| `enter` | select a vault (moves into the secrets pane); in the secrets/versions panes, load/preview the highlighted item (or the marked set, for versions) without moving focus |
 | `space` / `x` | mark a version — immediately previews it (or, with 2+ marked, the comparison) in the detail pane, no `enter` needed |
 | `e` | edit mode, including on a historical version — works from the secrets list and versions panel too |
 | `ctrl+s` | save value while in edit mode |
@@ -116,9 +116,11 @@ kvex --config examples/config.yaml
 Selecting a secret (`enter` in the secrets pane) loads its value and version
 history into the detail and versions panes but keeps focus on the secrets
 list, so you can preview several secrets in a row with just `↑`/`↓` + `enter`
-— no need to navigate back and forth between panes for a quick look. `e`
-also works directly from the secrets list on whatever secret is currently
-loaded.
+— no need to navigate back and forth between panes for a quick look. The
+versions pane works the same way: `enter` (or `space`/`x`) previews a version
+or marked comparison in the detail pane without leaving the versions list.
+`e` also works directly from the secrets list on whatever secret is
+currently loaded.
 
 Editing is allowed on any single version, not just the latest — Key Vault
 has no "edit in place" for an old version, so saving always creates a new

@@ -236,7 +236,8 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if len(m.markedVersions) == 0 {
 			// Nothing marked yet: treat enter on the highlighted item the
-			// same as marking it, then jump into the detail pane to look.
+			// same as marking it, then preview it — same as space/x, but
+			// via enter for muscle-memory consistency with the other panes.
 			idx := m.versionList.Index()
 			item, ok := m.versionList.SelectedItem().(versionItem)
 			if !ok {
@@ -246,12 +247,9 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.markedVersions[item.version.Version] = true
 			listCmd := m.versionList.SetItem(idx, item)
 			mm, previewCmd := m.previewMarkedVersions()
-			mm.focus = focusDetail
 			return mm, tea.Batch(listCmd, previewCmd)
 		}
-		mm, previewCmd := m.previewMarkedVersions()
-		mm.focus = focusDetail
-		return mm, previewCmd
+		return m.previewMarkedVersions()
 	}
 	var cmd tea.Cmd
 	m.versionList, cmd = m.versionList.Update(msg)
