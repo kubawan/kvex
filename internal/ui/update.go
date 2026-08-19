@@ -234,24 +234,14 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		mm, previewCmd := m.previewMarkedVersions()
 		return mm, tea.Batch(listCmd, previewCmd)
 	case "enter":
-		if len(m.markedVersions) == 0 {
-			// Nothing marked yet: treat enter on the highlighted item the
-			// same as marking it, then jump into the detail pane to look.
-			idx := m.versionList.Index()
-			item, ok := m.versionList.SelectedItem().(versionItem)
-			if !ok {
-				return m, nil
-			}
-			item.marked = true
-			m.markedVersions[item.version.Version] = true
-			listCmd := m.versionList.SetItem(idx, item)
-			mm, previewCmd := m.previewMarkedVersions()
-			mm.focus = focusDetail
-			return mm, tea.Batch(listCmd, previewCmd)
+		// enter is a pure preview: it shows the highlighted version without
+		// marking it or touching any existing marks. space/x is the only
+		// way to mark versions for a multi-version comparison.
+		item, ok := m.versionList.SelectedItem().(versionItem)
+		if !ok {
+			return m, nil
 		}
-		mm, previewCmd := m.previewMarkedVersions()
-		mm.focus = focusDetail
-		return mm, previewCmd
+		return m.previewVersion(item.version)
 	}
 	var cmd tea.Cmd
 	m.versionList, cmd = m.versionList.Update(msg)
@@ -285,21 +275,34 @@ func (m Model) previewMarkedVersions() (Model, tea.Cmd) {
 	}
 
 	if len(marked) == 1 {
-		m.currentVersion = marked[0].Version
-		m.comparingCount = 0
-		m.comparingSummary = ""
-		m.loading = true
-		short := marked[0].Version
-		if len(short) > 12 {
-			short = short[:12]
-		}
-		m.status = "loading version " + short + "..."
-		return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, marked[0].Version)
+		return m.previewVersion(marked[0])
 	}
 
 	m.loading = true
 	m.status = fmt.Sprintf("loading %d versions to compare...", len(marked))
 	return m, fetchSecretVersionValuesCmd(client, m.currentVaultName, m.currentSecretName, marked)
+}
+
+// previewVersion loads a single version's value into the detail pane,
+// independent of any marking — used by enter (a pure "look at this one",
+// distinct from space/x which marks versions for comparison).
+func (m Model) previewVersion(v azure.Version) (Model, tea.Cmd) {
+	client, err := m.clientFor(m.currentVaultName)
+	if err != nil {
+		m.err = err
+		m.status = err.Error()
+		return m, nil
+	}
+	m.currentVersion = v.Version
+	m.comparingCount = 0
+	m.comparingSummary = ""
+	m.loading = true
+	short := v.Version
+	if len(short) > 12 {
+		short = short[:12]
+	}
+	m.status = "loading version " + short + "..."
+	return m, fetchSecretValueCmd(client, m.currentVaultName, m.currentSecretName, v.Version)
 }
 
 func (m *Model) setSecretItems(names []string) {
