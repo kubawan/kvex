@@ -71,13 +71,13 @@ func New(cfg *config.Config, cred azcore.TokenCredential) Model {
 	vaultList.SetShowStatusBar(false)
 	themeList(&vaultList)
 
-	secretList := list.New(nil, newListDelegate(), 0, 0)
+	secretList := list.New(nil, newCompactListDelegate(), 0, 0)
 	secretList.Title = "SECRETS"
 	secretList.SetShowHelp(false)
 	secretList.SetShowStatusBar(false)
 	themeList(&secretList)
 
-	versionList := list.New(nil, newListDelegate(), 0, 0)
+	versionList := list.New(nil, newCompactListDelegate(), 0, 0)
 	versionList.Title = "VERSIONS"
 	versionList.SetShowHelp(false)
 	versionList.SetShowStatusBar(false)

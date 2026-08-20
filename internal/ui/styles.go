@@ -116,11 +116,24 @@ func listItemStyles() list.DefaultItemStyles {
 	return s
 }
 
-// newListDelegate returns a list delegate pre-themed with listItemStyles,
-// for use by every list.Model in the UI (vaults, secrets, versions).
+// newListDelegate returns a two-line (title + description) list delegate
+// pre-themed with listItemStyles. Used only by the vaults list, where the
+// description (the vault's URI) carries real information.
 func newListDelegate() list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 	d.Styles = listItemStyles()
+	return d
+}
+
+// newCompactListDelegate returns a single-line list delegate — no
+// description row — for lists whose items pack everything onto one line
+// (secrets have no second line at all; versions fold their status inline
+// into the title). Matches the design mockups' denser, single-line rows
+// and fits more items in the same vertical space.
+func newCompactListDelegate() list.DefaultDelegate {
+	d := newListDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
 	return d
 }
 

@@ -463,7 +463,7 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 	}
 	items := make([]list.Item, len(msg.versions))
 	for i, v := range msg.versions {
-		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version]}
+		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version], current: i == 0}
 	}
 	m.versionList.SetItems(items)
 	m.versionList.Title = fmt.Sprintf("VERSIONS · %d", len(msg.versions))
