@@ -5,7 +5,7 @@ import "github.com/charmbracelet/lipgloss"
 var (
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("212")).
+			Foreground(lipgloss.Color("33")).
 			Background(lipgloss.Color("235"))
 
 	statusStyle = lipgloss.NewStyle().
@@ -32,7 +32,7 @@ var (
 				Foreground(lipgloss.Color("0")).
 				Background(lipgloss.Color("214"))
 
-	focusedBorderColor = lipgloss.Color("212")
+	focusedBorderColor = lipgloss.Color("33") // Azure-blue accent, close to Microsoft's #0078D4 brand blue
 	blurredBorderColor = lipgloss.Color("240")
 )
 
