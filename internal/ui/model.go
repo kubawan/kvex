@@ -65,17 +65,20 @@ func New(cfg *config.Config, cred azcore.TokenCredential) Model {
 		vaultItems[i] = vaultItem{vault: v}
 	}
 
-	vaultList := list.New(vaultItems, list.NewDefaultDelegate(), 0, 0)
+	vaultList := list.New(vaultItems, newListDelegate(), 0, 0)
 	vaultList.Title = "Vaults"
 	vaultList.SetShowHelp(false)
+	themeList(&vaultList)
 
-	secretList := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+	secretList := list.New(nil, newListDelegate(), 0, 0)
 	secretList.Title = "Secrets"
 	secretList.SetShowHelp(false)
+	themeList(&secretList)
 
-	versionList := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+	versionList := list.New(nil, newListDelegate(), 0, 0)
 	versionList.Title = "Versions"
 	versionList.SetShowHelp(false)
+	themeList(&versionList)
 
 	detail := viewport.New(0, 0)
 
