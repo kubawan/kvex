@@ -73,6 +73,28 @@ func (m Model) statusLine() string {
 		style = errorStatusStyle
 		text = m.err.Error()
 	}
-	help := "←/→: switch pane · enter: select · e: edit · space: mark · q: quit"
-	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, help))
+	return style.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", text, m.keyHints()))
+}
+
+// keyHints returns the plain-mode key hint text for the currently focused
+// pane, so the status line only advertises keys that actually do something
+// there (e.g. space/x only marks versions in the versions pane). Edit mode
+// has its own contextual message via bannerLine(), so this is unused while
+// m.editMode is true.
+func (m Model) keyHints() string {
+	switch m.focus {
+	case focusVaults:
+		return "→: switch pane · ↑/↓: move · /: filter · enter: select · q: quit"
+	case focusSecrets:
+		hints := "←/→: switch pane · ↑/↓: move · /: filter · enter: select"
+		if m.currentSecretName != "" {
+			hints += " · e: edit"
+		}
+		return hints + " · q: quit"
+	case focusVersions:
+		return "←/→: switch pane · ↑/↓: move · /: filter · enter: preview · space/x: mark · e: edit · q: quit"
+	case focusDetail:
+		return "←/→: switch pane · e: edit · q: quit"
+	}
+	return "q: quit"
 }
