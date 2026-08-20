@@ -24,6 +24,9 @@ Feature 2 (cross-vault compare) is not built yet.
   hard-to-miss banner
 - Version history panel — always visible alongside the secrets list and
   detail pane, always read-only even while edit mode is active elsewhere
+- Header shows a breadcrumb (`kvex › vault › secret`) once you've drilled
+  in, instead of a static title, and pane labels carry live item counts
+  (`SECRETS · 5`) — both purely display, no extra API calls
 
 ### Feature 2 — Cross-vault compare (not implemented yet)
 

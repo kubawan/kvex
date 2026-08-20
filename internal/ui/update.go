@@ -344,6 +344,11 @@ func (m *Model) setSecretItems(names []string) {
 		items[i] = secretItem{name: n}
 	}
 	m.secretList.SetItems(items)
+	if names == nil {
+		m.secretList.Title = "SECRETS"
+	} else {
+		m.secretList.Title = fmt.Sprintf("SECRETS · %d", len(names))
+	}
 }
 
 func (m Model) selectVault(name string) (Model, tea.Cmd) {
@@ -356,6 +361,7 @@ func (m Model) selectVault(name string) (Model, tea.Cmd) {
 	m.comparingCount = 0
 	m.comparingSummary = ""
 	m.versionList.SetItems(nil)
+	m.versionList.Title = "VERSIONS"
 	m.focus = focusSecrets
 
 	if names, ok := m.secretNamesCache[name]; ok {
@@ -390,6 +396,7 @@ func (m Model) selectSecret(name string) (Model, tea.Cmd) {
 	m.comparingCount = 0
 	m.comparingSummary = ""
 	m.versionList.SetItems(nil)
+	m.versionList.Title = "VERSIONS"
 	// Deliberately don't move focus to the detail pane here: staying on the
 	// secrets list lets you preview values with just up/down + enter,
 	// without needing to navigate back after every single secret.
@@ -459,6 +466,7 @@ func (m Model) onSecretVersionsLoaded(msg secretVersionsLoadedMsg) (Model, tea.C
 		items[i] = versionItem{version: v, marked: m.markedVersions[v.Version]}
 	}
 	m.versionList.SetItems(items)
+	m.versionList.Title = fmt.Sprintf("VERSIONS · %d", len(msg.versions))
 	m.status = fmt.Sprintf("%d versions — space to preview, mark 2+ to compare", len(msg.versions))
 	return m, nil
 }
