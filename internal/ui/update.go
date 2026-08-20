@@ -168,6 +168,7 @@ func (m Model) enterEditMode() (Model, tea.Cmd) {
 	m.editMode = true
 	m.editArea.SetValue(m.currentValue)
 	m.editArea.Focus()
+	m.editOriginFocus = m.focus
 	m.focus = focusDetail
 	if m.currentVersion != "" {
 		m.status = "EDIT MODE (from historical version — saves as a new current version) — ctrl+s to save, esc to cancel"
@@ -182,6 +183,7 @@ func (m Model) handleEditKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.editMode = false
 		m.editArea.Blur()
+		m.focus = m.editOriginFocus
 		m.status = "edit cancelled"
 		return m, nil
 	case "ctrl+s":
@@ -470,6 +472,7 @@ func (m Model) onSecretSaved(msg secretSavedMsg) (Model, tea.Cmd) {
 	value := m.editArea.Value()
 	m.editMode = false
 	m.editArea.Blur()
+	m.focus = m.editOriginFocus
 	m.currentValue = value
 	m.currentVersion = "" // the save just created a new current version
 	m.detail.SetContent(value)
