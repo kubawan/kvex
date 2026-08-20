@@ -355,3 +355,33 @@ func TestOnSecretSaved_Error(t *testing.T) {
 type strErr string
 
 func (e strErr) Error() string { return string(e) }
+
+// Note: copySecretValue's happy path isn't covered here — it ends in a real
+// clipboard.WriteAll call, and CI's headless runner has no xclip/xsel/
+// wl-clipboard available, so exercising it would make the suite flaky.
+// These tests stick to the guard clauses that return before that point.
+
+func TestCopySecretValue_NoValueLoaded(t *testing.T) {
+	m := newTestModel()
+	got, cmd := m.copySecretValue()
+	if cmd != nil {
+		t.Fatal("copySecretValue() returned non-nil cmd with no value loaded")
+	}
+	if got.status != m.status {
+		t.Fatalf("status = %q, want unchanged %q (no-op with nothing to copy)", got.status, m.status)
+	}
+}
+
+func TestCopySecretValue_BlockedWhileComparing(t *testing.T) {
+	m := newTestModel()
+	m = loadSecret(t, m, "mock", "smtp-password")
+	m.comparingCount = 2
+
+	got, cmd := m.copySecretValue()
+	if cmd != nil {
+		t.Fatal("copySecretValue() returned non-nil cmd while comparing versions")
+	}
+	if !strings.Contains(got.status, "cannot copy while comparing") {
+		t.Fatalf("status = %q, want a message explaining why copy was blocked", got.status)
+	}
+}
