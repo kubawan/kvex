@@ -108,6 +108,7 @@ kvex --config examples/config.yaml
 | `/` | filter the focused list |
 | `enter` | select a vault (moves into the secrets pane); in the secrets pane, load the highlighted secret; in the versions pane, preview the highlighted version — none of these move focus except selecting a vault |
 | `space` / `x` | mark a version for comparison — immediately previews it (or, with 2+ marked, the comparison) in the detail pane |
+| `c` | copy the currently loaded value to the clipboard — works from any pane, no need to enter edit mode or navigate to the detail pane first |
 | `e` | edit mode, including on a historical version — works from the secrets list and versions panel too |
 | `ctrl+s` | save value while in edit mode; returns focus to whichever pane `e` was pressed from |
 | `esc` | cancel edit; returns focus to whichever pane `e` was pressed from |
@@ -129,7 +130,10 @@ itself — rather than always leaving you on detail.
 Editing is allowed on any single version, not just the latest — Key Vault
 has no "edit in place" for an old version, so saving always creates a new
 current version seeded from whatever value you were looking at. Comparing
-2+ versions has no single value to edit, so that stays blocked.
+2+ versions has no single value to edit, so that stays blocked (`e` and `c`
+both refuse with a status message). The detail pane's border turns red for
+the whole time you're in edit mode, not just the banner, so it's obvious
+even out of the corner of your eye that keystrokes are about to change data.
 
 ## Development
 

@@ -34,7 +34,8 @@ func (m Model) View() string {
 		detailContentHeight = m.detail.Height
 	}
 	detailInner := lipgloss.JoinVertical(lipgloss.Left, m.bannerLine(), detailContent)
-	detailBox := paneStyle(m.focus == focusDetail).
+	detailBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).
+		BorderForeground(m.detailBorderColor()).
 		Width(m.detail.Width).Height(1 + detailContentHeight).
 		Render(detailInner)
 
@@ -47,6 +48,21 @@ func (m Model) View() string {
 	body := lipgloss.JoinHorizontal(lipgloss.Top, panes...)
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.statusLine())
+}
+
+// detailBorderColor gives the detail pane its own border color in edit
+// mode (matching editBannerStyle) instead of just the banner — visible
+// even out of the corner of your eye, since it's the one mode where a
+// stray keystroke can change data. Every other state uses the normal
+// focused/unfocused border like the other three panes.
+func (m Model) detailBorderColor() lipgloss.Color {
+	if m.editMode {
+		return lipgloss.Color("196")
+	}
+	if m.focus == focusDetail {
+		return focusedBorderColor
+	}
+	return blurredBorderColor
 }
 
 func (m Model) bannerLine() string {
@@ -82,19 +98,23 @@ func (m Model) statusLine() string {
 // has its own contextual message via bannerLine(), so this is unused while
 // m.editMode is true.
 func (m Model) keyHints() string {
+	copyHint := ""
+	if m.currentValue != "" && m.comparingCount == 0 {
+		copyHint = " · c: copy"
+	}
 	switch m.focus {
 	case focusVaults:
-		return "→: switch pane · ↑/↓: move · /: filter · enter: select · q: quit"
+		return "→: switch pane · ↑/↓: move · /: filter · enter: select" + copyHint + " · q: quit"
 	case focusSecrets:
 		hints := "←/→: switch pane · ↑/↓: move · /: filter · enter: select"
 		if m.currentSecretName != "" {
 			hints += " · e: edit"
 		}
-		return hints + " · q: quit"
+		return hints + copyHint + " · q: quit"
 	case focusVersions:
-		return "←/→: switch pane · ↑/↓: move · /: filter · enter: preview · space/x: mark · e: edit · q: quit"
+		return "←/→: switch pane · ↑/↓: move · /: filter · enter: preview · space/x: mark · e: edit" + copyHint + " · q: quit"
 	case focusDetail:
-		return "←/→: switch pane · e: edit · q: quit"
+		return "←/→: switch pane · e: edit" + copyHint + " · q: quit"
 	}
 	return "q: quit"
 }

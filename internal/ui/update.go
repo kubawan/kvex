@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -97,6 +98,8 @@ func (m Model) handleVaultsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.selectVault(item.vault.Name)
+	case "c":
+		return m.copySecretValue()
 	}
 	var cmd tea.Cmd
 	m.vaultList, cmd = m.vaultList.Update(msg)
@@ -126,6 +129,8 @@ func (m Model) handleSecretsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.selectSecret(item.name)
 	case "e":
 		return m.enterEditMode()
+	case "c":
+		return m.copySecretValue()
 	}
 	var cmd tea.Cmd
 	m.secretList, cmd = m.secretList.Update(msg)
@@ -144,6 +149,8 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "e":
 		return m.enterEditMode()
+	case "c":
+		return m.copySecretValue()
 	}
 	var cmd tea.Cmd
 	m.detail, cmd = m.detail.Update(msg)
@@ -175,6 +182,28 @@ func (m Model) enterEditMode() (Model, tea.Cmd) {
 	} else {
 		m.status = "EDIT MODE — ctrl+s to save, esc to cancel"
 	}
+	return m, nil
+}
+
+// copySecretValue copies whatever is currently loaded in the detail pane to
+// the system clipboard. Unlike enterEditMode, it works from any pane and
+// never moves focus — it's a read-only action, so there's no reason to
+// detour through edit mode (or even the detail pane) just to grab a value.
+func (m Model) copySecretValue() (Model, tea.Cmd) {
+	if m.comparingCount > 0 {
+		m.status = "cannot copy while comparing versions — view a single version first"
+		return m, nil
+	}
+	if m.currentValue == "" {
+		return m, nil
+	}
+	if err := clipboard.WriteAll(m.currentValue); err != nil {
+		m.err = err
+		m.status = "copy failed: " + err.Error()
+		return m, nil
+	}
+	m.err = nil
+	m.status = "copied to clipboard"
 	return m, nil
 }
 
@@ -220,6 +249,8 @@ func (m Model) handleVersionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "e":
 		return m.enterEditMode()
+	case "c":
+		return m.copySecretValue()
 	case " ", "x":
 		idx := m.versionList.Index()
 		item, ok := m.versionList.SelectedItem().(versionItem)
