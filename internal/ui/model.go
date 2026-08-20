@@ -38,11 +38,12 @@ type Model struct {
 	detail      viewport.Model
 	editArea    textarea.Model
 
-	focus    focus
-	editMode bool
-	loading  bool
-	status   string
-	err      error
+	focus           focus
+	editOriginFocus focus // pane 'e' was pressed from; esc/ctrl+s restore focus here
+	editMode        bool
+	loading         bool
+	status          string
+	err             error
 
 	currentVaultName  string
 	currentSecretName string
