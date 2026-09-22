@@ -3,6 +3,8 @@ package ui
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestKeyHints_ContextualPerPane(t *testing.T) {
@@ -65,6 +67,48 @@ func TestKeyHints_ContextualPerPane(t *testing.T) {
 				if strings.Contains(hints, notWant) {
 					t.Errorf("keyHints() = %q, want it NOT to contain %q", hints, notWant)
 				}
+			}
+		})
+	}
+}
+
+func TestKeyHints_CopyHintOnlyWhenThereIsSomethingToCopy(t *testing.T) {
+	m := newTestModel()
+	if strings.Contains(m.keyHints(), "c: copy") {
+		t.Fatal("keyHints() advertises c: copy with no value loaded")
+	}
+
+	m.currentValue = "some secret value"
+	if !strings.Contains(m.keyHints(), "c: copy") {
+		t.Fatal("keyHints() doesn't advertise c: copy once a value is loaded")
+	}
+
+	m.comparingCount = 2
+	if strings.Contains(m.keyHints(), "c: copy") {
+		t.Fatal("keyHints() still advertises c: copy while comparing versions, where copy is blocked")
+	}
+}
+
+func TestDetailBorderColor(t *testing.T) {
+	tests := []struct {
+		name     string
+		editMode bool
+		focus    focus
+		want     lipgloss.Color
+	}{
+		{"edit mode overrides everything", true, focusVaults, lipgloss.Color("196")},
+		{"focused, not editing", false, focusDetail, focusedBorderColor},
+		{"unfocused, not editing", false, focusSecrets, blurredBorderColor},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestModel()
+			m.editMode = tt.editMode
+			m.focus = tt.focus
+
+			if got := m.detailBorderColor(); got != tt.want {
+				t.Errorf("detailBorderColor() = %v, want %v", got, tt.want)
 			}
 		})
 	}
