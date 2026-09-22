@@ -15,11 +15,6 @@ var (
 	accentColor      = lipgloss.Color("33")
 	accentMutedColor = lipgloss.Color("24")
 
-	// selectedRowBg tints a selected list item's whole row, not just its
-	// text, so the highlight reads as a filled row (closer to the design
-	// mockups) instead of a bare colored border.
-	selectedRowBg = lipgloss.Color("17")
-
 	// paneLabelColor is the neutral grey used for pane title labels
 	// ("VAULTS", "SECRETS · 5") — deliberately not accentColor, so the
 	// blue accent stays reserved for focus/selection instead of coloring
@@ -104,15 +99,29 @@ func listStyles() list.Styles {
 
 // listItemStyles returns bubbles/list's default item styles with the
 // selected-item highlight recolored from its library default (pink/magenta
-// — #EE6FF8, #AD58B4) to kvex's accent colors, and a tinted row background
-// added so the selection reads as a filled row instead of a bare border.
+// — #EE6FF8, #AD58B4) to kvex's accent color.
+//
+// Deliberately bold+color only, no background fill and no left border bar.
+// bubbles/list's DefaultDelegate computes each row's truncation width from
+// NormalTitle's padding and never calls .Width() on SelectedTitle, so a
+// Background() there only ever paints as wide as the text itself — on
+// items of different lengths that reads as ragged, differently-sized
+// patches rather than a clean filled row. The library default's left
+// border bar has the same problem from a different angle: it adds a
+// column of width only on the selected row, so the text shifts left/right
+// by one column as the cursor moves. Matching NormalTitle's padding
+// exactly (no border) keeps every row's text in the same column
+// regardless of selection state — bold color is enough to mark "selected"
+// without either artifact.
 func listItemStyles() list.DefaultItemStyles {
 	s := list.NewDefaultItemStyles()
-	s.SelectedTitle = s.SelectedTitle.
-		BorderForeground(accentColor).
-		Foreground(accentColor).
-		Background(selectedRowBg)
-	s.SelectedDesc = s.SelectedTitle.Foreground(accentMutedColor)
+	s.SelectedTitle = lipgloss.NewStyle().
+		Padding(0, 0, 0, 2).
+		Bold(true).
+		Foreground(accentColor)
+	s.SelectedDesc = s.SelectedTitle.
+		Bold(false).
+		Foreground(accentMutedColor)
 	return s
 }
 

@@ -67,15 +67,19 @@ func (m Model) View() string {
 // anything's selected, for orientation on first run.
 func (m Model) headerLine() string {
 	brand := headerStyle.Render(" kvex")
+	var content string
 	if m.currentVaultName == "" {
-		return lipgloss.NewStyle().Background(headerBg).Width(m.width).
-			Render(brand + headerCrumbStyle.Render(" — Azure Key Vault Explorer "))
+		content = brand + headerCrumbStyle.Render(" — Azure Key Vault Explorer ")
+	} else {
+		crumb := headerCrumbStyle.Render("  ›  " + m.currentVaultName)
+		if m.currentSecretName != "" {
+			crumb += headerCrumbStyle.Render("  ›  " + m.currentSecretName)
+		}
+		content = brand + crumb
 	}
-	crumb := headerCrumbStyle.Render("  ›  " + m.currentVaultName)
-	if m.currentSecretName != "" {
-		crumb += headerCrumbStyle.Render("  ›  " + m.currentSecretName)
-	}
-	return lipgloss.NewStyle().Background(headerBg).Width(m.width).Render(brand + crumb + " ")
+	// Vertical padding gives the header real presence (matching the design
+	// mockups' taller top bar) instead of a single cramped line.
+	return lipgloss.NewStyle().Background(headerBg).Width(m.width).Padding(1, 0).Render(content)
 }
 
 // currentVersionCreated returns the created timestamp of whatever version
@@ -135,7 +139,8 @@ func (m Model) bannerLine() string {
 
 func (m Model) statusLine() string {
 	if m.err != nil {
-		return errorStatusStyle.Width(m.width).Render(fmt.Sprintf(" %s   [%s]", m.err.Error(), m.keyHints()))
+		content := fmt.Sprintf(" %s   [%s]", m.err.Error(), m.keyHints())
+		return errorStatusStyle.Width(m.width).Padding(1, 0).Render(content)
 	}
 
 	// Bold+accent just the key portion of each "key: action" hint (e.g. the
@@ -156,7 +161,9 @@ func (m Model) statusLine() string {
 	hints := strings.Join(rendered, statusStyle.Render(" · "))
 
 	line := statusStyle.Render(" "+m.status+"   [") + hints + statusStyle.Render("]")
-	return lipgloss.NewStyle().Background(statusBg).Width(m.width).Render(line)
+	// Vertical padding gives the status bar real presence (matching the
+	// design mockups' taller bottom bar) instead of a single cramped line.
+	return lipgloss.NewStyle().Background(statusBg).Width(m.width).Padding(1, 0).Render(line)
 }
 
 // keyHints returns the plain-mode key hint text for the currently focused

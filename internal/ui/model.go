@@ -147,14 +147,14 @@ func (m *Model) layout() {
 		return
 	}
 
-	headerHeight := 1
-	statusHeight := 1
+	headerHeight := 3 // header/status bars carry 1 row of padding above and below their content
+	statusHeight := 3
 	bodyHeight := m.height - headerHeight - statusHeight
 	if bodyHeight < 3 {
 		bodyHeight = 3
 	}
 
-	vaultsWidth := m.width * 18 / 100
+	vaultsWidth := m.width * 20 / 100
 	secretsWidth := m.width * 34 / 100
 	detailWidth := m.width - vaultsWidth - secretsWidth
 	versionsWidth := detailWidth * 40 / 100
