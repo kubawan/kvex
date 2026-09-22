@@ -15,14 +15,42 @@ var (
 	accentColor      = lipgloss.Color("33")
 	accentMutedColor = lipgloss.Color("24")
 
+	// paneLabelColor is the neutral grey used for pane title labels
+	// ("VAULTS", "SECRETS · 5") — deliberately not accentColor, so the
+	// blue accent stays reserved for focus/selection instead of coloring
+	// everything.
+	paneLabelColor = lipgloss.Color("245")
+
+	headerBg = lipgloss.Color("235")
+
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(accentColor).
-			Background(lipgloss.Color("235"))
+			Background(headerBg)
+
+	// headerCrumbStyle renders the vault/secret breadcrumb trail next to
+	// the bold "kvex" brand text in the header, once something is selected.
+	headerCrumbStyle = lipgloss.NewStyle().
+				Foreground(paneLabelColor).
+				Background(headerBg)
+
+	statusBg = lipgloss.Color("236")
 
 	statusStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("250")).
-			Background(lipgloss.Color("236"))
+			Background(statusBg)
+
+	// statusKeyStyle bolds and accents just the key portion of a status-line
+	// hint ("enter" in "enter: select"), so the keys you can press stand out
+	// from what they do.
+	statusKeyStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(accentColor).
+			Background(statusBg)
+
+	// metaStyle renders the small "created: ..." footer under a secret's
+	// value in the detail pane.
+	metaStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
 	errorStatusStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -57,34 +85,64 @@ func paneStyle(focused bool) lipgloss.Style {
 }
 
 // listStyles returns bubbles/list's default Styles with its pane title bar
-// and filter cursor recolored from their library defaults (a purple title
-// bar, a pink filter cursor) to kvex's accent colors, so every pane shares
-// one consistent palette instead of three different ones.
+// flattened from a colored pill (the library default, and an earlier purple
+// one in kvex itself) to a plain small grey label — pane titles set their
+// own uppercase text (e.g. "SECRETS · 5") to read as a label rather than a
+// badge, matching the design mockups — and its filter cursor recolored to
+// kvex's accent instead of the library's default pink.
 func listStyles() list.Styles {
 	s := list.DefaultStyles()
-	s.Title = s.Title.Background(accentMutedColor)
+	s.Title = lipgloss.NewStyle().Foreground(paneLabelColor).Padding(0, 0, 1, 0)
 	s.FilterCursor = s.FilterCursor.Foreground(accentColor)
 	return s
 }
 
 // listItemStyles returns bubbles/list's default item styles with the
 // selected-item highlight recolored from its library default (pink/magenta
-// — #EE6FF8, #AD58B4) to kvex's accent colors, matching the header and
-// focused-pane border instead of clashing with them.
+// — #EE6FF8, #AD58B4) to kvex's accent color.
+//
+// Deliberately bold+color only, no background fill and no left border bar.
+// bubbles/list's DefaultDelegate computes each row's truncation width from
+// NormalTitle's padding and never calls .Width() on SelectedTitle, so a
+// Background() there only ever paints as wide as the text itself — on
+// items of different lengths that reads as ragged, differently-sized
+// patches rather than a clean filled row. The library default's left
+// border bar has the same problem from a different angle: it adds a
+// column of width only on the selected row, so the text shifts left/right
+// by one column as the cursor moves. Matching NormalTitle's padding
+// exactly (no border) keeps every row's text in the same column
+// regardless of selection state — bold color is enough to mark "selected"
+// without either artifact.
 func listItemStyles() list.DefaultItemStyles {
 	s := list.NewDefaultItemStyles()
-	s.SelectedTitle = s.SelectedTitle.
-		BorderForeground(accentColor).
+	s.SelectedTitle = lipgloss.NewStyle().
+		Padding(0, 0, 0, 2).
+		Bold(true).
 		Foreground(accentColor)
-	s.SelectedDesc = s.SelectedTitle.Foreground(accentMutedColor)
+	s.SelectedDesc = s.SelectedTitle.
+		Bold(false).
+		Foreground(accentMutedColor)
 	return s
 }
 
-// newListDelegate returns a list delegate pre-themed with listItemStyles,
-// for use by every list.Model in the UI (vaults, secrets, versions).
+// newListDelegate returns a two-line (title + description) list delegate
+// pre-themed with listItemStyles. Used only by the vaults list, where the
+// description (the vault's URI) carries real information.
 func newListDelegate() list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 	d.Styles = listItemStyles()
+	return d
+}
+
+// newCompactListDelegate returns a single-line list delegate — no
+// description row — for lists whose items pack everything onto one line
+// (secrets have no second line at all; versions fold their status inline
+// into the title). Matches the design mockups' denser, single-line rows
+// and fits more items in the same vertical space.
+func newCompactListDelegate() list.DefaultDelegate {
+	d := newListDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
 	return d
 }
 

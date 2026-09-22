@@ -23,7 +23,14 @@ Feature 2 (cross-vault compare) is not built yet.
 - Default mode is **read-only**; `e` toggles edit mode with a persistent,
   hard-to-miss banner
 - Version history panel — always visible alongside the secrets list and
-  detail pane, always read-only even while edit mode is active elsewhere
+  detail pane, always read-only even while edit mode is active elsewhere.
+  Each version shows as one compact line — a checkbox, short hash, and
+  either `current` or a relative age (`3d ago`) — so a long history stays
+  scannable; the detail pane's meta footer shows the precise absolute
+  date for whichever version is actually loaded
+- Header shows a breadcrumb (`kvex › vault › secret`) once you've drilled
+  in, instead of a static title, and pane labels carry live item counts
+  (`SECRETS · 5`) — both purely display, no extra API calls
 
 ### Feature 2 — Cross-vault compare (not implemented yet)
 

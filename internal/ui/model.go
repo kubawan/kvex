@@ -66,18 +66,21 @@ func New(cfg *config.Config, cred azcore.TokenCredential) Model {
 	}
 
 	vaultList := list.New(vaultItems, newListDelegate(), 0, 0)
-	vaultList.Title = "Vaults"
+	vaultList.Title = fmt.Sprintf("VAULTS · %d", len(cfg.Vaults))
 	vaultList.SetShowHelp(false)
+	vaultList.SetShowStatusBar(false)
 	themeList(&vaultList)
 
-	secretList := list.New(nil, newListDelegate(), 0, 0)
-	secretList.Title = "Secrets"
+	secretList := list.New(nil, newCompactListDelegate(), 0, 0)
+	secretList.Title = "SECRETS"
 	secretList.SetShowHelp(false)
+	secretList.SetShowStatusBar(false)
 	themeList(&secretList)
 
-	versionList := list.New(nil, newListDelegate(), 0, 0)
-	versionList.Title = "Versions"
+	versionList := list.New(nil, newCompactListDelegate(), 0, 0)
+	versionList.Title = "VERSIONS"
 	versionList.SetShowHelp(false)
+	versionList.SetShowStatusBar(false)
 	themeList(&versionList)
 
 	detail := viewport.New(0, 0)
@@ -144,14 +147,14 @@ func (m *Model) layout() {
 		return
 	}
 
-	headerHeight := 1
-	statusHeight := 1
+	headerHeight := 3 // header/status bars carry 1 row of padding above and below their content
+	statusHeight := 3
 	bodyHeight := m.height - headerHeight - statusHeight
 	if bodyHeight < 3 {
 		bodyHeight = 3
 	}
 
-	vaultsWidth := m.width * 18 / 100
+	vaultsWidth := m.width * 20 / 100
 	secretsWidth := m.width * 34 / 100
 	detailWidth := m.width - vaultsWidth - secretsWidth
 	versionsWidth := detailWidth * 40 / 100
